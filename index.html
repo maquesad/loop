@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Loop · Personal Dashboard</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◐</span>
+        <span class="brand-name">Loop</span>
+      </div>
+      <div class="today">
+        <span id="todayDate"></span>
+      </div>
+      <button id="themeToggle" class="icon-btn" title="Toggle theme">🌙</button>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="pomodoro">Focus</button>
+      <button class="tab" data-tab="workout">Workout</button>
+      <button class="tab" data-tab="meals">Meals</button>
+      <button class="tab" data-tab="work">Work</button>
+    </nav>
+
+    <main class="panels">
+
+      <!-- FOCUS / POMODORO -->
+      <section class="panel active" id="panel-pomodoro">
+        <div class="card timer-card">
+          <div class="timer-phase" id="timerPhaseLabel">Focus</div>
+          <div class="timer-display" id="timerDisplay">25:00</div>
+          <div class="timer-controls">
+            <button id="timerStartPause" class="btn btn-primary">Start</button>
+            <button id="timerReset" class="btn">Reset</button>
+            <button id="timerSkip" class="btn">Skip</button>
+          </div>
+          <div class="timer-meta">
+            <span id="sessionCount">0 sessions today</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Timer settings</h3>
+          <div class="settings-grid">
+            <label>Focus (min)
+              <input type="number" id="focusMin" min="5" max="90" step="1" />
+            </label>
+            <label>Short break (min)
+              <input type="number" id="breakMin" min="1" max="30" step="1" />
+            </label>
+            <label>Long break (min)
+              <input type="number" id="longBreakMin" min="5" max="60" step="1" />
+            </label>
+            <label>Sessions before long break
+              <input type="number" id="sessionsBeforeLong" min="2" max="8" step="1" />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- WORKOUT -->
+      <section class="panel" id="panel-workout">
+        <div class="card">
+          <div class="card-header">
+            <h3 id="workoutDayLabel">Today's routine</h3>
+            <button id="editRoutineBtn" class="btn btn-small">Edit routine</button>
+          </div>
+          <ul class="checklist" id="workoutList"></ul>
+          <div class="progress-bar"><div class="progress-fill" id="workoutProgressFill"></div></div>
+        </div>
+
+        <div class="card hidden" id="routineEditorCard">
+          <h3>Weekly routine</h3>
+          <div class="weekday-tabs" id="weekdayTabs"></div>
+          <div class="add-row">
+            <input type="text" id="newExerciseInput" placeholder="Add exercise (e.g. Squats 3x10)" />
+            <button id="addExerciseBtn" class="btn btn-small">Add</button>
+          </div>
+          <ul class="checklist" id="routineEditList"></ul>
+        </div>
+      </section>
+
+      <!-- MEALS & RECIPES -->
+      <section class="panel" id="panel-meals">
+        <div class="card">
+          <h3>Today's meals</h3>
+          <div class="meal-grid">
+            <label>Breakfast <input type="text" id="mealBreakfast" placeholder="—" /></label>
+            <label>Lunch <input type="text" id="mealLunch" placeholder="—" /></label>
+            <label>Dinner <input type="text" id="mealDinner" placeholder="—" /></label>
+            <label>Snacks <input type="text" id="mealSnacks" placeholder="—" /></label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Recipe box</h3>
+            <button id="newRecipeBtn" class="btn btn-small">+ New recipe</button>
+          </div>
+          <div id="recipeList" class="recipe-list"></div>
+        </div>
+
+        <div class="card hidden" id="recipeEditorCard">
+          <h3 id="recipeEditorTitle">New recipe</h3>
+          <label>Name <input type="text" id="recipeName" /></label>
+          <label>Tags <input type="text" id="recipeTags" placeholder="quick, vegetarian, meal-prep" /></label>
+          <label>Ingredients <textarea id="recipeIngredients" rows="4" placeholder="One per line"></textarea></label>
+          <label>Steps <textarea id="recipeSteps" rows="4" placeholder="One per line"></textarea></label>
+          <div class="timer-controls">
+            <button id="saveRecipeBtn" class="btn btn-primary">Save</button>
+            <button id="cancelRecipeBtn" class="btn">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- WORK -->
+      <section class="panel" id="panel-work">
+        <div class="card">
+          <h3>Tasks</h3>
+          <div class="add-row">
+            <input type="text" id="newTaskInput" placeholder="Add a task…" />
+            <select id="newTaskPriority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+            <button id="addTaskBtn" class="btn btn-small">Add</button>
+          </div>
+          <ul class="task-list" id="taskList"></ul>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <span class="muted">Data saved only on this device.</span>
+      <div class="footer-actions">
+        <button id="exportBtn" class="btn btn-small">Download JSON</button>
+        <button id="importBtn" class="btn btn-small">Load JSON</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
