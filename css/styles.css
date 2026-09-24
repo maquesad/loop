@@ -1,6 +1,7 @@
 :root {
   --bg: #f5f6fa;
-  --surface: #ffffff;
+  --bg-gradient: linear-gradient(180deg, #eef0fa 0%, #f5f6fa 45%, #e6f4f0 100%);
+  --surface: rgba(255, 255, 255, 0.82);
   --surface-2: #eef0f6;
   --text: #1c1e26;
   --text-muted: #6b7080;
@@ -14,7 +15,8 @@
 
 :root[data-theme="dark"] {
   --bg: #14151d;
-  --surface: #1c1e28;
+  --bg-gradient: linear-gradient(180deg, #171626 0%, #14151d 45%, #0f1b1a 100%);
+  --surface: rgba(28, 30, 40, 0.82);
   --surface-2: #262836;
   --text: #eceef5;
   --text-muted: #9a9db0;
@@ -29,9 +31,23 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
+  background: var(--bg-gradient) fixed, var(--bg);
   color: var(--text);
   transition: background 0.2s, color 0.2s;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url("../img/bg.svg") center bottom / cover no-repeat;
+  pointer-events: none;
+}
+
+.card {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .app {
@@ -292,6 +308,50 @@ textarea { resize: vertical; }
 :root[data-theme="dark"] .priority-low { background: #123a2c; color: #5fe0b1; }
 :root[data-theme="dark"] .priority-medium { background: #3a2e10; color: #f0c667; }
 :root[data-theme="dark"] .priority-high { background: #3a1616; color: #f28b8b; }
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+.week-day {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 8px 6px;
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.week-day.is-today { outline: 2px solid var(--accent); }
+.week-day-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.week-empty { font-size: 0.8rem; }
+.week-chore {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  padding: 4px 6px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+.week-chore.done { opacity: 0.5; text-decoration: line-through; }
+.week-chore .remove-btn { font-size: 0.8rem; padding: 0; }
+
+@media (max-width: 480px) {
+  .week-grid { grid-template-columns: repeat(2, 1fr); }
+  .week-day { min-height: 0; }
+}
 
 .footer {
   margin-top: 20px;

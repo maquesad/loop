@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <linearGradient id="mtnFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6c5ce7" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#6c5ce7" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="mtnNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#00b894" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#00b894" stop-opacity="0.05"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <g id="paw" fill="#6c5ce7" fill-opacity="0.22">
+      <ellipse cx="0" cy="10" rx="9" ry="7.5"/>
+      <circle cx="-10" cy="-2" r="4"/>
+      <circle cx="-3.5" cy="-8" r="4"/>
+      <circle cx="3.5" cy="-8" r="4"/>
+      <circle cx="10" cy="-2" r="4"/>
+    </g>
+    <g id="note" fill="#6c5ce7" fill-opacity="0.22">
+      <ellipse cx="0" cy="0" rx="9" ry="6.5" transform="rotate(-20)"/>
+      <rect x="6.5" y="-46" width="3.5" height="46" rx="1.5"/>
+      <path d="M10 -46 q22 4 20 24 q-4 -12 -20 -12z"/>
+    </g>
+    <g id="pine" fill="#00b894" fill-opacity="0.28">
+      <path d="M0 -70 L18 -30 L10 -30 L28 0 L-28 0 L-10 -30 L-18 -30 Z"/>
+      <rect x="-3.5" y="0" width="7" height="12"/>
+    </g>
+  </defs>
+
+  <!-- sun glow -->
+  <circle cx="1180" cy="200" r="190" fill="url(#sun)"/>
+
+  <!-- waveform (music) -->
+  <path d="M-20 460 C 60 460, 80 400, 140 400 S 220 520, 280 520 S 360 380, 420 380 S 500 540, 560 540 S 640 420, 700 420 S 780 500, 840 500 S 920 360, 980 360 S 1060 560, 1120 560 S 1200 440, 1260 440 S 1340 480, 1460 470"
+        fill="none" stroke="#6c5ce7" stroke-opacity="0.22" stroke-width="3" stroke-linecap="round"/>
+  <path d="M-20 480 C 60 480, 90 450, 150 450 S 230 510, 290 510 S 370 430, 430 430 S 510 520, 570 520 S 650 450, 710 450 S 790 500, 850 500 S 930 420, 990 420 S 1070 530, 1130 530 S 1210 460, 1270 460 S 1350 490, 1460 485"
+        fill="none" stroke="#00b894" stroke-opacity="0.16" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- music notes -->
+  <use href="#note" x="240" y="250"/>
+  <use href="#note" x="330" y="200" transform="scale(0.8) translate(80 50)"/>
+  <use href="#note" x="1010" y="300"/>
+
+  <!-- boxing glove (muay thai) -->
+  <g transform="translate(1250 330) rotate(-20)" fill="#e74c3c" fill-opacity="0.22">
+    <rect x="-34" y="-46" width="68" height="70" rx="30"/>
+    <rect x="-28" y="10" width="56" height="28" rx="8"/>
+    <rect x="-40" y="-30" width="22" height="44" rx="11"/>
+  </g>
+
+  <!-- far mountains -->
+  <path fill="url(#mtnFar)" d="M-40 760 L120 560 L240 660 L380 520 L520 680 L660 560 L800 700 L940 540 L1080 660 L1220 580 L1360 700 L1480 620 L1480 900 L-40 900 Z"/>
+
+  <!-- near mountains -->
+  <path fill="url(#mtnNear)" d="M-40 900 L-40 800 L160 700 L300 780 L460 660 L620 800 L760 720 L920 820 L1080 700 L1240 800 L1400 740 L1480 780 L1480 900 Z"/>
+
+  <!-- pines -->
+  <use href="#pine" x="120" y="820"/>
+  <use href="#pine" x="180" y="850" transform="scale(0.8) translate(45 210)"/>
+  <use href="#pine" x="1290" y="830"/>
+  <use href="#pine" x="1360" y="855" transform="scale(0.75) translate(455 285)"/>
+  <use href="#pine" x="700" y="860" transform="scale(0.7) translate(300 370)"/>
+
+  <!-- paw prints (dog trail) -->
+  <use href="#paw" x="560" y="770" transform="rotate(-15 560 770)"/>
+  <use href="#paw" x="610" y="740" transform="rotate(-10 610 740)"/>
+  <use href="#paw" x="660" y="770" transform="rotate(-15 660 770)"/>
+  <use href="#paw" x="710" y="740" transform="rotate(-10 710 740)"/>
+  <use href="#paw" x="880" y="240" transform="scale(0.8) translate(220 60)"/>
+</svg>

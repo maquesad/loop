@@ -24,6 +24,7 @@
       <button class="tab" data-tab="workout">Workout</button>
       <button class="tab" data-tab="meals">Meals</button>
       <button class="tab" data-tab="work">Work</button>
+      <button class="tab" data-tab="chores">Chores</button>
     </nav>
 
     <main class="panels">
@@ -131,6 +132,36 @@
             <button id="addTaskBtn" class="btn btn-small">Add</button>
           </div>
           <ul class="task-list" id="taskList"></ul>
+        </div>
+      </section>
+
+      <!-- CHORES -->
+      <section class="panel" id="panel-chores">
+        <div class="card">
+          <div class="card-header">
+            <h3 id="choresTodayLabel">Today's chores</h3>
+            <span class="muted" id="choresWeekLabel"></span>
+          </div>
+          <ul class="checklist" id="choresTodayList"></ul>
+          <p class="muted hidden" id="choresTodayEmpty">Nothing scheduled for today.</p>
+        </div>
+
+        <div class="card">
+          <h3>Weekly schedule</h3>
+          <div class="add-row">
+            <input type="text" id="newChoreInput" placeholder="Add a chore (e.g. Laundry)" />
+            <select id="newChoreDay">
+              <option value="Mon">Mon</option>
+              <option value="Tue">Tue</option>
+              <option value="Wed">Wed</option>
+              <option value="Thu">Thu</option>
+              <option value="Fri">Fri</option>
+              <option value="Sat">Sat</option>
+              <option value="Sun">Sun</option>
+            </select>
+            <button id="addChoreBtn" class="btn btn-small">Add</button>
+          </div>
+          <div class="week-grid" id="choresWeekGrid"></div>
         </div>
       </section>
 

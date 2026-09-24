@@ -28,6 +28,14 @@ function defaultData() {
     work: {
       tasks: [],
     },
+    chores: {
+      items: [
+        { id: 'c1', text: 'Laundry', day: 'Sat' },
+        { id: 'c2', text: 'Groceries', day: 'Sun' },
+        { id: 'c3', text: 'Clean bathroom', day: 'Wed' },
+      ],
+      logByWeek: {},
+    },
   };
 }
 
@@ -43,6 +51,7 @@ function loadData() {
       meals: { ...base.meals, ...parsed.meals },
       recipes: parsed.recipes || [],
       work: { ...base.work, ...parsed.work },
+      chores: { ...base.chores, ...parsed.chores },
     };
   } catch (e) {
     console.warn('Failed to load stored data, starting fresh.', e);
@@ -474,6 +483,88 @@ document.getElementById('newTaskInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('addTaskBtn').click();
 });
 
+// ---------- Chores ----------
+const CHORE_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// Week key = date of that week's Monday, so completion resets every week.
+function weekKey(d = new Date()) {
+  const date = new Date(d);
+  const offset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - offset);
+  return todayKey(date);
+}
+
+function choreLog() {
+  const key = weekKey();
+  if (!state.chores.logByWeek[key]) state.chores.logByWeek[key] = {};
+  return state.chores.logByWeek[key];
+}
+
+function renderChores() {
+  const today = currentWeekday();
+  const log = choreLog();
+  document.getElementById('choresTodayLabel').textContent = `Today's chores (${today})`;
+  document.getElementById('choresWeekLabel').textContent = `Week of ${weekKey()}`;
+
+  const todayList = document.getElementById('choresTodayList');
+  todayList.innerHTML = '';
+  const todays = state.chores.items.filter((c) => c.day === today);
+  document.getElementById('choresTodayEmpty').classList.toggle('hidden', todays.length > 0);
+  todays.forEach((chore) => {
+    const li = document.createElement('li');
+    const done = !!log[chore.id];
+    if (done) li.classList.add('done');
+    li.innerHTML = `
+      <input type="checkbox" ${done ? 'checked' : ''} />
+      <span class="row-text">${chore.text}</span>
+    `;
+    li.querySelector('input').addEventListener('change', (e) => {
+      choreLog()[chore.id] = e.target.checked;
+      saveData();
+      renderChores();
+    });
+    todayList.appendChild(li);
+  });
+
+  const grid = document.getElementById('choresWeekGrid');
+  grid.innerHTML = '';
+  CHORE_DAYS.forEach((day) => {
+    const col = document.createElement('div');
+    col.className = 'week-day' + (day === today ? ' is-today' : '');
+    const items = state.chores.items.filter((c) => c.day === day);
+    col.innerHTML = `<div class="week-day-name">${day}</div>`;
+    if (items.length === 0) {
+      col.innerHTML += '<div class="muted week-empty">—</div>';
+    }
+    items.forEach((chore) => {
+      const row = document.createElement('div');
+      row.className = 'week-chore' + (log[chore.id] ? ' done' : '');
+      row.innerHTML = `<span>${chore.text}</span><button class="remove-btn" title="Remove">✕</button>`;
+      row.querySelector('.remove-btn').addEventListener('click', () => {
+        state.chores.items = state.chores.items.filter((c) => c.id !== chore.id);
+        saveData();
+        renderChores();
+      });
+      col.appendChild(row);
+    });
+    grid.appendChild(col);
+  });
+}
+
+document.getElementById('addChoreBtn').addEventListener('click', () => {
+  const input = document.getElementById('newChoreInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const day = document.getElementById('newChoreDay').value;
+  state.chores.items.push({ id: uid(), text, day });
+  input.value = '';
+  saveData();
+  renderChores();
+});
+document.getElementById('newChoreInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addChoreBtn').click();
+});
+
 // ---------- Export / Import ----------
 document.getElementById('exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -513,6 +604,7 @@ function renderAll() {
   renderMeals();
   renderRecipes();
   renderTasks();
+  renderChores();
 }
 
 initTheme();
