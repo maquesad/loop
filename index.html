@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Loop · Personal Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -25,6 +28,7 @@
       <button class="tab" data-tab="meals">Meals</button>
       <button class="tab" data-tab="work">Work</button>
       <button class="tab" data-tab="chores">Chores</button>
+      <button class="tab" data-tab="uni">University</button>
     </nav>
 
     <main class="panels">
@@ -162,6 +166,76 @@
             <button id="addChoreBtn" class="btn btn-small">Add</button>
           </div>
           <div class="week-grid" id="choresWeekGrid"></div>
+        </div>
+      </section>
+
+      <!-- UNIVERSITY -->
+      <section class="panel" id="panel-uni">
+        <div class="card uni-hero">
+          <div class="uni-hero-text">
+            <div class="uni-kicker" id="uniSchool">Universidad Fidélitas</div>
+            <h2 class="uni-title" id="uniProgram">Psicología</h2>
+            <div class="uni-status" id="uniStatus"></div>
+            <button id="uniEditBtn" class="btn btn-small btn-ghost">Edit details</button>
+          </div>
+          <div class="uni-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="ring-track" cx="60" cy="60" r="52"/>
+              <circle class="ring-fill" id="uniRingFill" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="ring-label">
+              <span class="ring-pct" id="uniRingPct">0%</span>
+              <span class="ring-sub">courses</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hidden" id="uniDetailsCard">
+          <h3>Program details</h3>
+          <div class="settings-grid">
+            <label>Program <input type="text" id="uniProgramInput" /></label>
+            <label>University <input type="text" id="uniSchoolInput" /></label>
+            <label>Start date <input type="date" id="uniStartInput" /></label>
+            <label>Total courses in plan <input type="number" id="uniTotalInput" min="0" placeholder="leave 0 to auto" /></label>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-tile"><span class="stat-value" id="statCourses">0</span><span class="stat-label">courses done</span></div>
+          <div class="stat-tile"><span class="stat-value" id="statCredits">0</span><span class="stat-label">credits earned</span></div>
+          <div class="stat-tile"><span class="stat-value" id="statStudy">0h</span><span class="stat-label">study this week</span></div>
+          <div class="stat-tile"><span class="stat-value" id="statDue">0</span><span class="stat-label">due in 7 days</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Terms & courses</h3>
+            <button id="addTermBtn" class="btn btn-small">+ Term</button>
+          </div>
+          <div id="termList" class="term-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Assignments & exams</h3>
+          <div class="add-row">
+            <input type="text" id="newAssignTitle" placeholder="Essay, exam, reading…" />
+            <input type="text" id="newAssignCourse" placeholder="Course" class="input-sm" />
+            <input type="date" id="newAssignDue" />
+            <button id="addAssignBtn" class="btn btn-small">Add</button>
+          </div>
+          <ul class="task-list" id="assignList"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Study log</h3>
+            <div class="study-actions">
+              <button class="btn btn-small" data-min="30">+30m</button>
+              <button class="btn btn-small" data-min="60">+1h</button>
+              <button class="btn btn-small" data-min="120">+2h</button>
+            </div>
+          </div>
+          <div class="study-chart" id="studyChart"></div>
         </div>
       </section>
 

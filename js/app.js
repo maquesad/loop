@@ -36,6 +36,27 @@ function defaultData() {
       ],
       logByWeek: {},
     },
+    university: {
+      program: 'Psicología · Bachillerato',
+      school: 'Universidad Fidélitas',
+      startDate: '2027-01-11',
+      totalCourses: 0,
+      terms: [
+        {
+          id: 't1',
+          name: 'I Cuatrimestre 2027',
+          start: '2027-01-11',
+          end: '2027-04-24',
+          courses: [
+            { id: 'u1', code: 'PS-101', name: 'Introducción a la Psicología', credits: 3, status: 'planned', grade: '' },
+            { id: 'u2', code: 'PS-501', name: 'Introducción a la Neurociencia', credits: 3, status: 'planned', grade: '' },
+            { id: 'u3', code: 'BEPR-602B', name: 'Inteligencia Emocional', credits: 3, status: 'planned', grade: '' },
+          ],
+        },
+      ],
+      assignments: [],
+      studyLog: {},
+    },
   };
 }
 
@@ -52,6 +73,7 @@ function loadData() {
       recipes: parsed.recipes || [],
       work: { ...base.work, ...parsed.work },
       chores: { ...base.chores, ...parsed.chores },
+      university: { ...base.university, ...parsed.university },
     };
   } catch (e) {
     console.warn('Failed to load stored data, starting fresh.', e);
@@ -565,6 +587,313 @@ document.getElementById('newChoreInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('addChoreBtn').click();
 });
 
+// ---------- University ----------
+const COURSE_STATUSES = [
+  { value: 'planned', label: 'Planned' },
+  { value: 'active', label: 'In progress' },
+  { value: 'done', label: 'Done' },
+];
+
+function uni() { return state.university; }
+
+function allCourses() {
+  return uni().terms.flatMap((t) => t.courses);
+}
+
+function daysBetween(fromKey, toKey) {
+  const a = new Date(fromKey + 'T00:00:00');
+  const b = new Date(toKey + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
+function formatDate(key) {
+  return new Date(key + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function currentTerm() {
+  const today = todayKey();
+  return uni().terms.find((t) => t.start && t.end && t.start <= today && today <= t.end);
+}
+
+function renderUniHero() {
+  const u = uni();
+  document.getElementById('uniProgram').textContent = u.program;
+  document.getElementById('uniSchool').textContent = u.school;
+
+  const today = todayKey();
+  const statusEl = document.getElementById('uniStatus');
+  const term = currentTerm();
+  if (term) {
+    const total = Math.max(1, daysBetween(term.start, term.end));
+    const elapsed = daysBetween(term.start, today);
+    const week = Math.floor(elapsed / 7) + 1;
+    const weeks = Math.ceil(total / 7);
+    statusEl.innerHTML = `<strong>${term.name}</strong> · week ${week} of ${weeks} · ends ${formatDate(term.end)}`;
+  } else if (u.startDate && today < u.startDate) {
+    const days = daysBetween(today, u.startDate);
+    statusEl.innerHTML = `Starts in <strong>${days} day${days === 1 ? '' : 's'}</strong> · ${formatDate(u.startDate)}`;
+  } else {
+    statusEl.textContent = 'Between terms';
+  }
+
+  const courses = allCourses();
+  const done = courses.filter((c) => c.status === 'done');
+  const total = u.totalCourses > 0 ? u.totalCourses : courses.length;
+  const pct = total ? Math.round((done.length / total) * 100) : 0;
+  const ring = document.getElementById('uniRingFill');
+  const circumference = 2 * Math.PI * 52;
+  ring.style.strokeDasharray = circumference;
+  ring.style.strokeDashoffset = circumference * (1 - pct / 100);
+  document.getElementById('uniRingPct').textContent = `${pct}%`;
+
+  document.getElementById('statCourses').textContent = `${done.length}/${total}`;
+  document.getElementById('statCredits').textContent = done.reduce((s, c) => s + (Number(c.credits) || 0), 0);
+
+  const wk = weekKey();
+  let weekMinutes = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wk + 'T00:00:00');
+    d.setDate(d.getDate() + i);
+    weekMinutes += u.studyLog[todayKey(d)] || 0;
+  }
+  document.getElementById('statStudy').textContent = `${(weekMinutes / 60).toFixed(1).replace(/\.0$/, '')}h`;
+
+  const inWeek = new Date(); inWeek.setDate(inWeek.getDate() + 7);
+  const limit = todayKey(inWeek);
+  document.getElementById('statDue').textContent = u.assignments.filter((a) => !a.done && a.due >= today && a.due <= limit).length;
+}
+
+function renderTerms() {
+  const list = document.getElementById('termList');
+  list.innerHTML = '';
+  if (uni().terms.length === 0) {
+    list.innerHTML = '<p class="muted">No terms yet. Add your first cuatrimestre.</p>';
+    return;
+  }
+  const active = currentTerm();
+  uni().terms.forEach((term) => {
+    const done = term.courses.filter((c) => c.status === 'done').length;
+    const el = document.createElement('div');
+    el.className = 'term' + (active && active.id === term.id ? ' term-active' : '');
+    el.innerHTML = `
+      <div class="term-header">
+        <div>
+          <div class="term-name">${term.name}${active && active.id === term.id ? ' <span class="pill">now</span>' : ''}</div>
+          <div class="muted term-dates">${term.start ? formatDate(term.start) : '—'} → ${term.end ? formatDate(term.end) : '—'} · ${done}/${term.courses.length} done</div>
+        </div>
+        <div class="term-actions">
+          <button class="icon-mini" data-act="edit" title="Edit term">✎</button>
+          <button class="icon-mini" data-act="remove" title="Remove term">✕</button>
+        </div>
+      </div>
+      <div class="term-edit hidden">
+        <input type="text" data-field="name" value="${term.name}" placeholder="Term name" />
+        <input type="date" data-field="start" value="${term.start || ''}" />
+        <input type="date" data-field="end" value="${term.end || ''}" />
+      </div>
+      <div class="course-list"></div>
+      <div class="add-row course-add">
+        <input type="text" data-new="code" placeholder="Code" class="input-sm" />
+        <input type="text" data-new="name" placeholder="Course name" />
+        <button class="btn btn-small" data-act="addCourse">Add</button>
+      </div>
+    `;
+
+    const editBox = el.querySelector('.term-edit');
+    el.querySelector('[data-act="edit"]').addEventListener('click', () => editBox.classList.toggle('hidden'));
+    editBox.querySelectorAll('input').forEach((inp) => {
+      inp.addEventListener('change', () => {
+        term[inp.dataset.field] = inp.value;
+        saveData();
+        renderUniversity();
+      });
+    });
+    el.querySelector('[data-act="remove"]').addEventListener('click', () => {
+      if (!confirm(`Remove "${term.name}" and its courses?`)) return;
+      uni().terms = uni().terms.filter((t) => t.id !== term.id);
+      saveData();
+      renderUniversity();
+    });
+
+    const courseList = el.querySelector('.course-list');
+    term.courses.forEach((course) => {
+      const row = document.createElement('div');
+      row.className = `course status-${course.status}`;
+      row.innerHTML = `
+        <div class="course-main">
+          <span class="course-code">${course.code || ''}</span>
+          <span class="course-name">${course.name}</span>
+        </div>
+        <select class="course-status">
+          ${COURSE_STATUSES.map((s) => `<option value="${s.value}" ${s.value === course.status ? 'selected' : ''}>${s.label}</option>`).join('')}
+        </select>
+        <input type="number" class="course-credits" value="${course.credits}" min="0" title="Credits" />
+        <input type="text" class="course-grade" value="${course.grade}" placeholder="Grade" />
+        <button class="remove-btn" title="Remove">✕</button>
+      `;
+      row.querySelector('.course-status').addEventListener('change', (e) => {
+        course.status = e.target.value;
+        saveData();
+        renderUniversity();
+      });
+      row.querySelector('.course-credits').addEventListener('change', (e) => {
+        course.credits = Number(e.target.value) || 0;
+        saveData();
+        renderUniHero();
+      });
+      row.querySelector('.course-grade').addEventListener('change', (e) => {
+        course.grade = e.target.value.trim();
+        saveData();
+      });
+      row.querySelector('.remove-btn').addEventListener('click', () => {
+        term.courses = term.courses.filter((c) => c.id !== course.id);
+        saveData();
+        renderUniversity();
+      });
+      courseList.appendChild(row);
+    });
+
+    const addBtn = el.querySelector('[data-act="addCourse"]');
+    const nameInput = el.querySelector('[data-new="name"]');
+    const codeInput = el.querySelector('[data-new="code"]');
+    const addCourse = () => {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      term.courses.push({ id: uid(), code: codeInput.value.trim(), name, credits: 3, status: 'planned', grade: '' });
+      saveData();
+      renderUniversity();
+    };
+    addBtn.addEventListener('click', addCourse);
+    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCourse(); });
+
+    list.appendChild(el);
+  });
+}
+
+function renderAssignments() {
+  const list = document.getElementById('assignList');
+  list.innerHTML = '';
+  const today = todayKey();
+  const soon = new Date(); soon.setDate(soon.getDate() + 7);
+  const soonKey = todayKey(soon);
+  const sorted = [...uni().assignments].sort((a, b) => (a.done - b.done) || a.due.localeCompare(b.due));
+  if (sorted.length === 0) {
+    list.innerHTML = '<li class="muted" style="list-style:none">Nothing due. Enjoy it while it lasts.</li>';
+    return;
+  }
+  sorted.forEach((a) => {
+    const li = document.createElement('li');
+    let urgency = '';
+    if (!a.done && a.due < today) urgency = 'overdue';
+    else if (!a.done && a.due <= soonKey) urgency = 'soon';
+    li.className = 'task-item' + (a.done ? ' done' : '') + (urgency ? ` due-${urgency}` : '');
+    li.innerHTML = `
+      <input type="checkbox" ${a.done ? 'checked' : ''} />
+      <div class="task-text">
+        <div>${a.title}</div>
+        <div class="muted assign-meta">${a.course ? a.course + ' · ' : ''}${formatDate(a.due)}${urgency === 'overdue' ? ' · overdue' : ''}</div>
+      </div>
+      <button class="remove-btn" title="Remove">✕</button>
+    `;
+    li.querySelector('input').addEventListener('change', (e) => {
+      a.done = e.target.checked;
+      saveData();
+      renderUniversity();
+    });
+    li.querySelector('.remove-btn').addEventListener('click', () => {
+      uni().assignments = uni().assignments.filter((x) => x.id !== a.id);
+      saveData();
+      renderUniversity();
+    });
+    list.appendChild(li);
+  });
+}
+
+function renderStudyChart() {
+  const chart = document.getElementById('studyChart');
+  chart.innerHTML = '';
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  const values = days.map((d) => uni().studyLog[todayKey(d)] || 0);
+  const max = Math.max(60, ...values);
+  days.forEach((d, i) => {
+    const col = document.createElement('div');
+    col.className = 'study-col' + (i === 6 ? ' is-today' : '');
+    const h = Math.round((values[i] / max) * 100);
+    const label = values[i] ? `${(values[i] / 60).toFixed(1).replace(/\.0$/, '')}h` : '';
+    col.innerHTML = `
+      <div class="study-val">${label}</div>
+      <div class="study-bar-wrap"><div class="study-bar" style="height:${h}%"></div></div>
+      <div class="study-day">${WEEKDAYS[d.getDay()]}</div>
+    `;
+    chart.appendChild(col);
+  });
+}
+
+function renderUniversity() {
+  renderUniHero();
+  renderTerms();
+  renderAssignments();
+  renderStudyChart();
+}
+
+document.getElementById('uniEditBtn').addEventListener('click', () => {
+  const card = document.getElementById('uniDetailsCard');
+  card.classList.toggle('hidden');
+  const u = uni();
+  document.getElementById('uniProgramInput').value = u.program;
+  document.getElementById('uniSchoolInput').value = u.school;
+  document.getElementById('uniStartInput').value = u.startDate || '';
+  document.getElementById('uniTotalInput').value = u.totalCourses || '';
+});
+[['uniProgramInput', 'program'], ['uniSchoolInput', 'school'], ['uniStartInput', 'startDate']].forEach(([id, field]) => {
+  document.getElementById(id).addEventListener('change', (e) => {
+    uni()[field] = e.target.value.trim();
+    saveData();
+    renderUniHero();
+  });
+});
+document.getElementById('uniTotalInput').addEventListener('change', (e) => {
+  uni().totalCourses = Math.max(0, parseInt(e.target.value, 10) || 0);
+  saveData();
+  renderUniHero();
+});
+
+document.getElementById('addTermBtn').addEventListener('click', () => {
+  const n = uni().terms.length + 1;
+  uni().terms.push({ id: uid(), name: `Term ${n}`, start: '', end: '', courses: [] });
+  saveData();
+  renderUniversity();
+});
+
+document.getElementById('addAssignBtn').addEventListener('click', () => {
+  const title = document.getElementById('newAssignTitle').value.trim();
+  const due = document.getElementById('newAssignDue').value;
+  if (!title || !due) return;
+  uni().assignments.push({ id: uid(), title, course: document.getElementById('newAssignCourse').value.trim(), due, done: false });
+  document.getElementById('newAssignTitle').value = '';
+  document.getElementById('newAssignCourse').value = '';
+  document.getElementById('newAssignDue').value = '';
+  saveData();
+  renderUniversity();
+});
+document.getElementById('newAssignTitle').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addAssignBtn').click();
+});
+
+document.querySelectorAll('.study-actions button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const key = todayKey();
+    uni().studyLog[key] = (uni().studyLog[key] || 0) + Number(btn.dataset.min);
+    saveData();
+    renderUniversity();
+  });
+});
+
 // ---------- Export / Import ----------
 document.getElementById('exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -605,6 +934,7 @@ function renderAll() {
   renderRecipes();
   renderTasks();
   renderChores();
+  renderUniversity();
 }
 
 initTheme();
