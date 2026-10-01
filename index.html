@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Loop · Personal Dashboard</title>
+<title>Mau’s Page · Loop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <div class="bg-word" aria-hidden="true">MAU’S PAGE</div>
   <div class="app">
     <header class="topbar">
       <div class="brand">
@@ -29,6 +30,7 @@
       <button class="tab" data-tab="work">Work</button>
       <button class="tab" data-tab="chores">Chores</button>
       <button class="tab" data-tab="uni">University</button>
+      <button class="tab" data-tab="muay">Muay Thai</button>
     </nav>
 
     <main class="panels">
@@ -46,6 +48,11 @@
           <div class="timer-meta">
             <span id="sessionCount">0 sessions today</span>
           </div>
+          <label class="timer-tag">
+            <input type="checkbox" id="uniTagToggle" />
+            <span>Count toward University study</span>
+          </label>
+          <div class="timer-note muted" id="timerLogNote"></div>
         </div>
 
         <div class="card">
@@ -236,6 +243,49 @@
             </div>
           </div>
           <div class="study-chart" id="studyChart"></div>
+          <p class="muted" style="margin:10px 0 0;">Tip: turn on “Count toward University study” in the Focus tab and your Pomodoro sessions land here automatically.</p>
+        </div>
+      </section>
+
+      <!-- MUAY THAI -->
+      <section class="panel" id="panel-muay">
+        <div class="card mt-card" id="mtCard">
+          <div class="mt-round" id="mtRoundLabel">Round 1 / 5</div>
+          <div class="mt-phase" id="mtPhaseLabel">Ready</div>
+          <div class="mt-time" id="mtTime">3:00</div>
+          <div class="timer-controls">
+            <button id="mtStartPause" class="btn btn-primary">Start</button>
+            <button id="mtReset" class="btn">Reset</button>
+            <button id="mtSkip" class="btn">Skip</button>
+          </div>
+          <div class="mt-dots" id="mtDots"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Music</h3>
+            <label class="timer-tag mt-music-toggle">
+              <input type="checkbox" id="mtMusicOn" checked />
+              <span>Play during rounds</span>
+            </label>
+          </div>
+          <div class="mt-music-row">
+            <button id="mtPickMusic" class="btn btn-small">Choose music file</button>
+            <input type="file" id="mtMusicFile" accept="audio/*" hidden />
+            <label class="mt-volume">Volume <input type="range" id="mtVolume" min="0" max="1" step="0.05" /></label>
+          </div>
+          <p class="muted" id="mtMusicStatus" style="margin:10px 0 0;"></p>
+          <audio id="mtMusic" loop preload="none"></audio>
+        </div>
+
+        <div class="card">
+          <h3>Round settings</h3>
+          <div class="settings-grid">
+            <label>Rounds <input type="number" id="mtRounds" min="1" max="20" /></label>
+            <label>Round length (min) <input type="number" id="mtRoundMin" min="1" max="10" step="0.5" /></label>
+            <label>Rest (sec) <input type="number" id="mtRestSec" min="10" max="300" step="5" /></label>
+            <label>Warning (sec before end) <input type="number" id="mtWarnSec" min="0" max="60" step="5" /></label>
+          </div>
         </div>
       </section>
 

@@ -53,6 +53,25 @@ body::before {
   -webkit-backdrop-filter: blur(6px);
 }
 
+.bg-word {
+  position: fixed;
+  left: 50%;
+  top: 70%;
+  z-index: -1;
+  transform: translate(-50%, -50%) rotate(-28deg);
+  font-family: var(--display);
+  font-size: clamp(4rem, 14vw, 13rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 3px var(--accent);
+  opacity: 0.28;
+  pointer-events: none;
+  user-select: none;
+}
+:root[data-theme="dark"] .bg-word { opacity: 0.22; }
+
 .app {
   max-width: 720px;
   margin: 0 auto;
@@ -176,6 +195,22 @@ body::before {
   flex-wrap: wrap;
 }
 .timer-meta { color: var(--text-muted); font-size: 0.85rem; }
+.timer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 12px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--surface-2);
+}
+.timer-tag input { width: 16px; height: 16px; accent-color: var(--accent-2); margin: 0; }
+.timer-tag:has(input:checked) { background: var(--accent-2); color: #fff; border-color: var(--accent-2); }
+.timer-note { min-height: 1.2em; margin-top: 8px; font-size: 0.8rem; }
 
 .btn {
   border: 1px solid var(--border);
@@ -535,6 +570,44 @@ textarea { resize: vertical; }
   gap: 10px;
 }
 .footer-actions { display: flex; gap: 8px; }
+
+/* Muay Thai */
+.mt-card { text-align: center; }
+.mt-round { font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.15em; color: var(--text-muted); }
+.mt-phase {
+  font-family: var(--display);
+  font-size: 2rem;
+  letter-spacing: 0.2em;
+  margin: 2px 0 4px;
+  color: var(--accent-2);
+}
+.mt-time {
+  font-family: var(--display);
+  font-size: 6rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  margin-bottom: 16px;
+}
+.mt-card.mt-round { background: #ffd400; border-color: #0b0b0b; color: #0b0b0b; }
+.mt-card.mt-round .mt-round, .mt-card.mt-round .mt-phase { color: #0b0b0b; }
+.mt-card.mt-round .btn { background: #0b0b0b; color: #ffd400; border-color: #0b0b0b; }
+.mt-card.mt-rest { background: #ff2e88; border-color: #0b0b0b; color: #fff; }
+.mt-card.mt-rest .mt-round, .mt-card.mt-rest .mt-phase { color: #fff; }
+.mt-card.mt-rest .btn { background: #0b0b0b; color: #fff; border-color: #0b0b0b; }
+.mt-card.mt-done .mt-phase { color: var(--accent); }
+.mt-dots { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.mt-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid currentColor; opacity: 0.45;
+}
+.mt-dot.current { opacity: 1; background: currentColor; animation: mtPulse 1s infinite alternate; }
+.mt-dot.done { opacity: 1; background: currentColor; }
+@keyframes mtPulse { from { transform: scale(1); } to { transform: scale(1.35); } }
+.mt-music-toggle { margin-top: 0; }
+.mt-music-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.mt-volume { flex-direction: row !important; align-items: center; gap: 8px; margin: 0 !important; }
+.mt-volume input { accent-color: var(--accent-2); }
 
 /* Display type */
 .brand-name, .timer-display, .card h3, .uni-title, .stat-value, .ring-pct, .tab, .timer-phase {

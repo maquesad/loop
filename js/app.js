@@ -16,6 +16,7 @@ function defaultData() {
     pomodoro: {
       settings: { focusMin: 25, breakMin: 5, longBreakMin: 15, sessionsBeforeLong: 4 },
       sessionsByDate: {},
+      tagUniversity: false,
     },
     workout: {
       routine: JSON.parse(JSON.stringify(DEFAULT_ROUTINE)),
@@ -57,6 +58,14 @@ function defaultData() {
       assignments: [],
       studyLog: {},
     },
+    muay: {
+      rounds: 5,
+      roundMin: 3,
+      restSec: 60,
+      warnSec: 10,
+      musicOn: true,
+      volume: 0.7,
+    },
   };
 }
 
@@ -74,6 +83,7 @@ function loadData() {
       work: { ...base.work, ...parsed.work },
       chores: { ...base.chores, ...parsed.chores },
       university: { ...base.university, ...parsed.university },
+      muay: { ...base.muay, ...parsed.muay },
     };
   } catch (e) {
     console.warn('Failed to load stored data, starting fresh.', e);
@@ -210,6 +220,12 @@ function advancePhase() {
     timer.completedFocusSessions += 1;
     const key = todayKey();
     state.pomodoro.sessionsByDate[key] = (state.pomodoro.sessionsByDate[key] || 0) + 1;
+    const focusedMin = Math.round((phaseDurationSec('focus') - Math.max(0, timer.remainingSec)) / 60);
+    if (state.pomodoro.tagUniversity && focusedMin > 0) {
+      state.university.studyLog[key] = (state.university.studyLog[key] || 0) + focusedMin;
+      document.getElementById('timerLogNote').textContent = `+${focusedMin} min logged to University study`;
+      renderUniversity();
+    }
     saveData();
     renderSessionCount();
     const isLong = timer.completedFocusSessions % state.pomodoro.settings.sessionsBeforeLong === 0;
@@ -267,7 +283,14 @@ function initPomodoro() {
   loadSettingsIntoInputs();
   renderSessionCount();
   resetTimerToPhase('focus');
+  document.getElementById('uniTagToggle').checked = !!state.pomodoro.tagUniversity;
 }
+
+document.getElementById('uniTagToggle').addEventListener('change', (e) => {
+  state.pomodoro.tagUniversity = e.target.checked;
+  saveData();
+  document.getElementById('timerLogNote').textContent = e.target.checked ? 'Focus sessions will count as University study.' : '';
+});
 
 // ---------- Workout ----------
 let editingWeekday = currentWeekday();
@@ -894,6 +917,229 @@ document.querySelectorAll('.study-actions button').forEach((btn) => {
   });
 });
 
+// ---------- Muay Thai rounds ----------
+const DEFAULT_MUSIC_SRC = 'audio/sarama.mp3';
+const mtMusic = document.getElementById('mtMusic');
+const mt = {
+  phase: 'ready', // ready | round | rest | done
+  round: 1,
+  remainingSec: 0,
+  running: false,
+  intervalId: null,
+  musicLoaded: false,
+};
+
+let audioCtx = null;
+function ctx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function ringBell(times = 1) {
+  try {
+    const ac = ctx();
+    for (let i = 0; i < times; i++) {
+      const t0 = ac.currentTime + i * 0.55;
+      [660, 1320, 1980].forEach((freq, idx) => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(idx === 0 ? 0.5 : 0.18, t0);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+        osc.start(t0);
+        osc.stop(t0 + 1.6);
+      });
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function clapper() {
+  try {
+    const ac = ctx();
+    for (let i = 0; i < 3; i++) {
+      const t0 = ac.currentTime + i * 0.12;
+      const buf = ac.createBuffer(1, ac.sampleRate * 0.05, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / data.length, 3);
+      const src = ac.createBufferSource();
+      const filter = ac.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 2200;
+      const gain = ac.createGain();
+      gain.gain.value = 0.8;
+      src.buffer = buf;
+      src.connect(filter).connect(gain).connect(ac.destination);
+      src.start(t0);
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function mtSettings() { return state.muay; }
+
+function mtFormat(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function mtPhaseDuration(phase) {
+  if (phase === 'round') return Math.round(mtSettings().roundMin * 60);
+  if (phase === 'rest') return mtSettings().restSec;
+  if (phase === 'ready') return 10;
+  return 0;
+}
+
+function musicPlay() {
+  if (!mtSettings().musicOn || !mt.musicLoaded) return;
+  mtMusic.volume = mtSettings().volume;
+  mtMusic.play().catch(() => {});
+}
+function musicPause() { mtMusic.pause(); }
+function musicStop() { mtMusic.pause(); try { mtMusic.currentTime = 0; } catch (e) { /* ignore */ } }
+
+function mtRenderDots() {
+  const dots = document.getElementById('mtDots');
+  dots.innerHTML = '';
+  for (let i = 1; i <= mtSettings().rounds; i++) {
+    const d = document.createElement('span');
+    d.className = 'mt-dot' + (i < mt.round || mt.phase === 'done' ? ' done' : i === mt.round && mt.phase !== 'ready' ? ' current' : '');
+    dots.appendChild(d);
+  }
+}
+
+function mtUpdateUI() {
+  const card = document.getElementById('mtCard');
+  card.classList.remove('mt-ready', 'mt-round', 'mt-rest', 'mt-done');
+  card.classList.add(`mt-${mt.phase}`);
+  const labels = { ready: 'Get ready', round: 'Fight', rest: 'Rest', done: 'Done' };
+  document.getElementById('mtPhaseLabel').textContent = labels[mt.phase];
+  document.getElementById('mtRoundLabel').textContent = mt.phase === 'done'
+    ? `${mtSettings().rounds} rounds complete`
+    : `Round ${mt.round} / ${mtSettings().rounds}`;
+  document.getElementById('mtTime').textContent = mt.phase === 'done' ? '0:00' : mtFormat(mt.remainingSec);
+  document.getElementById('mtStartPause').textContent = mt.running ? 'Pause' : (mt.phase === 'done' ? 'Again' : 'Start');
+  mtRenderDots();
+}
+
+function mtSetPhase(phase) {
+  mt.phase = phase;
+  mt.remainingSec = mtPhaseDuration(phase);
+  if (phase === 'round') { ringBell(1); musicPlay(); }
+  else if (phase === 'rest') { ringBell(3); musicPause(); }
+  else if (phase === 'done') { ringBell(3); musicStop(); mt.running = false; clearInterval(mt.intervalId); }
+  else musicPause();
+  mtUpdateUI();
+}
+
+function mtAdvance() {
+  if (mt.phase === 'ready') mtSetPhase('round');
+  else if (mt.phase === 'round') {
+    if (mt.round >= mtSettings().rounds) mtSetPhase('done');
+    else mtSetPhase('rest');
+  } else if (mt.phase === 'rest') {
+    mt.round += 1;
+    mtSetPhase('round');
+  }
+}
+
+function mtTick() {
+  mt.remainingSec -= 1;
+  const warn = mtSettings().warnSec;
+  if (mt.phase === 'round' && warn > 0 && mt.remainingSec === warn) clapper();
+  if (mt.remainingSec <= 0) { mtAdvance(); return; }
+  mtUpdateUI();
+}
+
+function mtReset() {
+  clearInterval(mt.intervalId);
+  mt.running = false;
+  mt.round = 1;
+  musicStop();
+  mt.phase = 'ready';
+  mt.remainingSec = mtPhaseDuration('ready');
+  mtUpdateUI();
+}
+
+document.getElementById('mtStartPause').addEventListener('click', () => {
+  ctx();
+  if (mt.phase === 'done') mtReset();
+  if (mt.running) {
+    clearInterval(mt.intervalId);
+    mt.running = false;
+    musicPause();
+  } else {
+    mt.running = true;
+    mt.intervalId = setInterval(mtTick, 1000);
+    if (mt.phase === 'round') musicPlay();
+  }
+  mtUpdateUI();
+});
+document.getElementById('mtReset').addEventListener('click', mtReset);
+document.getElementById('mtSkip').addEventListener('click', () => {
+  ctx();
+  if (mt.phase === 'done') return;
+  mtAdvance();
+});
+
+[['mtRounds', 'rounds'], ['mtRoundMin', 'roundMin'], ['mtRestSec', 'restSec'], ['mtWarnSec', 'warnSec']].forEach(([id, key]) => {
+  document.getElementById(id).addEventListener('change', (e) => {
+    const val = parseFloat(e.target.value);
+    if (Number.isNaN(val) || val < 0) return;
+    mtSettings()[key] = val;
+    saveData();
+    if (!mt.running) mtReset();
+    else mtUpdateUI();
+  });
+});
+
+document.getElementById('mtMusicOn').addEventListener('change', (e) => {
+  mtSettings().musicOn = e.target.checked;
+  saveData();
+  if (!e.target.checked) musicPause();
+  else if (mt.running && mt.phase === 'round') musicPlay();
+});
+document.getElementById('mtVolume').addEventListener('input', (e) => {
+  mtSettings().volume = parseFloat(e.target.value);
+  mtMusic.volume = mtSettings().volume;
+  saveData();
+});
+
+function setMusicSource(src, label) {
+  mtMusic.src = src;
+  mt.musicLoaded = true;
+  document.getElementById('mtMusicStatus').textContent = `Track: ${label}`;
+}
+document.getElementById('mtPickMusic').addEventListener('click', () => document.getElementById('mtMusicFile').click());
+document.getElementById('mtMusicFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  setMusicSource(URL.createObjectURL(file), file.name);
+  if (mt.running && mt.phase === 'round') musicPlay();
+});
+
+async function initMuay() {
+  const s = mtSettings();
+  document.getElementById('mtRounds').value = s.rounds;
+  document.getElementById('mtRoundMin').value = s.roundMin;
+  document.getElementById('mtRestSec').value = s.restSec;
+  document.getElementById('mtWarnSec').value = s.warnSec;
+  document.getElementById('mtMusicOn').checked = s.musicOn;
+  document.getElementById('mtVolume').value = s.volume;
+  mtMusic.volume = s.volume;
+  mtReset();
+  try {
+    const res = await fetch(DEFAULT_MUSIC_SRC, { method: 'HEAD' });
+    if (res.ok) setMusicSource(DEFAULT_MUSIC_SRC, 'sarama.mp3');
+    else throw new Error('missing');
+  } catch (e) {
+    document.getElementById('mtMusicStatus').textContent = 'No track yet — add audio/sarama.mp3 to the repo, or choose a file from this device.';
+  }
+}
+
 // ---------- Export / Import ----------
 document.getElementById('exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -935,6 +1181,7 @@ function renderAll() {
   renderTasks();
   renderChores();
   renderUniversity();
+  initMuay();
 }
 
 initTheme();
