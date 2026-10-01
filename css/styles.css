@@ -163,9 +163,11 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
 }
-.card-header h3 { margin: 0; }
+.card-header h3 { margin: 0; white-space: nowrap; }
 
 .hidden { display: none !important; }
 
@@ -508,7 +510,7 @@ textarea { resize: vertical; }
 .course-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .course {
   display: grid;
-  grid-template-columns: 1fr 120px 64px 70px 28px;
+  grid-template-columns: 1fr 120px 76px 28px;
   gap: 6px;
   align-items: center;
   background: var(--surface);
@@ -559,6 +561,94 @@ textarea { resize: vertical; }
   .course select, .course input { grid-column: 1 / -1; }
   .course .remove-btn { grid-row: 1; grid-column: 2; }
   .term-edit { grid-template-columns: 1fr; }
+}
+
+/* Meals log */
+.date-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.date-label { font-size: 0.85rem; font-weight: 600; min-width: 120px; text-align: center; }
+.icon-mini:disabled { opacity: 0.35; cursor: default; }
+.meal-slots { display: flex; flex-direction: column; gap: 12px; }
+.meal-slot {
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+}
+.meal-slot-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.meal-slot-name { font-family: var(--display); font-size: 1.15rem; letter-spacing: 0.08em; }
+.meal-entries { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.meal-entries li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.meal-time { font-size: 0.72rem; color: var(--text-muted); min-width: 36px; font-variant-numeric: tabular-nums; }
+.meal-text { flex: 1; }
+.meal-entries .remove-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+.meal-slot .add-row { flex-wrap: wrap; }
+.meal-recipe-pick { max-width: 160px; }
+.meal-history { display: flex; flex-direction: column; gap: 6px; }
+.meal-hist-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 24px;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.meal-hist-row.active { background: var(--accent); color: var(--on-accent); }
+.meal-hist-day { font-weight: 700; }
+.meal-hist-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meal-hist-count { font-weight: 700; text-align: right; }
+.recipe-source { margin: 10px 0 0; font-size: 0.78rem; }
+
+/* University: roadmap, terms, graduation */
+.roadmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.road-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.road-step.current { outline: 3px solid var(--accent-2); outline-offset: 1px; }
+.road-step.complete { background: var(--accent); color: var(--on-accent); }
+.road-num { font-family: var(--display); font-size: 1.4rem; letter-spacing: 0.06em; line-height: 1; }
+.road-bar { width: 100%; height: 6px; background: rgba(128, 128, 128, 0.3); border-radius: 999px; overflow: hidden; }
+.road-bar i { display: block; height: 100%; background: var(--accent-2); }
+.road-frac { font-size: 0.7rem; font-weight: 600; }
+.term-title { flex: 1; cursor: pointer; min-width: 0; }
+.term-mini-bar { height: 5px; background: rgba(128, 128, 128, 0.25); border-radius: 999px; margin-top: 6px; overflow: hidden; }
+.term-mini-bar i { display: block; height: 100%; background: var(--accent-2); }
+.term-complete { opacity: 0.85; }
+.pill-done { background: var(--accent); color: var(--on-accent); }
+.term-body { margin-top: 10px; }
+.course-choice { width: 100%; padding: 6px 8px; font-size: 0.82rem; }
+.grad-row { margin-bottom: 12px; }
+.grad-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 8px; }
+.grad-english { margin-top: 4px; }
+
+@media (max-width: 640px) {
+  .meal-hist-row { grid-template-columns: 56px 1fr 20px; }
+  .meal-recipe-pick { max-width: none; flex: 1 1 100%; }
 }
 
 .footer {

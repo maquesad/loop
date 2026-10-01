@@ -99,13 +99,22 @@
       <!-- MEALS & RECIPES -->
       <section class="panel" id="panel-meals">
         <div class="card">
-          <h3>Today's meals</h3>
-          <div class="meal-grid">
-            <label>Breakfast <input type="text" id="mealBreakfast" placeholder="—" /></label>
-            <label>Lunch <input type="text" id="mealLunch" placeholder="—" /></label>
-            <label>Dinner <input type="text" id="mealDinner" placeholder="—" /></label>
-            <label>Snacks <input type="text" id="mealSnacks" placeholder="—" /></label>
+          <div class="card-header">
+            <h3>What I ate</h3>
+            <div class="date-nav">
+              <button id="mealPrev" class="icon-mini" title="Previous day">&lsaquo;</button>
+              <span id="mealDateLabel" class="date-label"></span>
+              <button id="mealNext" class="icon-mini" title="Next day">&rsaquo;</button>
+              <button id="mealToday" class="btn btn-small">Today</button>
+            </div>
           </div>
+          <div id="mealSlots" class="meal-slots"></div>
+          <p class="muted" id="mealSummary" style="margin:10px 0 0;"></p>
+        </div>
+
+        <div class="card">
+          <h3>Last 7 days</h3>
+          <div id="mealHistory" class="meal-history"></div>
         </div>
 
         <div class="card">
@@ -113,6 +122,7 @@
             <h3>Recipe box</h3>
             <button id="newRecipeBtn" class="btn btn-small">+ New recipe</button>
           </div>
+          <p class="muted" id="recipeNote" style="margin:0 0 10px;">Open a recipe and press “I ate this” to add it to today’s log.</p>
           <div id="recipeList" class="recipe-list"></div>
         </div>
 
@@ -209,9 +219,17 @@
 
         <div class="stat-row">
           <div class="stat-tile"><span class="stat-value" id="statCourses">0</span><span class="stat-label">courses done</span></div>
-          <div class="stat-tile"><span class="stat-value" id="statCredits">0</span><span class="stat-label">credits earned</span></div>
+          <div class="stat-tile"><span class="stat-value" id="statAvg">—</span><span class="stat-label">average grade</span></div>
           <div class="stat-tile"><span class="stat-value" id="statStudy">0h</span><span class="stat-label">study this week</span></div>
           <div class="stat-tile"><span class="stat-value" id="statDue">0</span><span class="stat-label">due in 7 days</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Roadmap</h3>
+            <span class="muted" id="roadmapNote"></span>
+          </div>
+          <div class="roadmap" id="uniRoadmap"></div>
         </div>
 
         <div class="card">
@@ -220,6 +238,23 @@
             <button id="addTermBtn" class="btn btn-small">+ Term</button>
           </div>
           <div id="termList" class="term-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Graduation requirements</h3>
+          <div class="grad-row">
+            <div class="grad-head"><strong>Trabajo Comunal Universitario (TCU)</strong><span class="muted" id="tcuText">0 / 150 h</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="tcuFill"></div></div>
+            <div class="add-row" style="margin-top:8px;">
+              <input type="number" id="tcuAddInput" min="0" step="0.5" placeholder="Hours to add (e.g. 4)" />
+              <button id="tcuAddBtn" class="btn btn-small">Add hours</button>
+            </div>
+          </div>
+          <label class="timer-tag grad-english">
+            <input type="checkbox" id="gradEnglish" />
+            <span>Required English level accredited</span>
+          </label>
+          <p class="muted" style="margin:10px 0 0;">Bachillerato: 9 cuatrimestres in the plan + TCU (150 h) + English level. Licenciatura: 2 more cuatrimestres plus graduation requirements.</p>
         </div>
 
         <div class="card">
@@ -301,6 +336,7 @@
     </footer>
   </div>
 
+  <script src="js/data.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

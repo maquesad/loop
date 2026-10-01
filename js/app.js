@@ -23,9 +23,10 @@ function defaultData() {
       logByDate: {},
     },
     meals: {
-      planByDate: {},
+      logByDate: {},
     },
-    recipes: [],
+    recipes: JSON.parse(JSON.stringify(SEED_RECIPES)),
+    recipesSeeded: true,
     work: {
       tasks: [],
     },
@@ -42,21 +43,11 @@ function defaultData() {
       school: 'Universidad Fidélitas',
       startDate: '2027-01-11',
       totalCourses: 0,
-      terms: [
-        {
-          id: 't1',
-          name: 'I Cuatrimestre 2027',
-          start: '2027-01-11',
-          end: '2027-04-24',
-          courses: [
-            { id: 'u1', code: 'PS-101', name: 'Introducción a la Psicología', credits: 3, status: 'planned', grade: '' },
-            { id: 'u2', code: 'PS-501', name: 'Introducción a la Neurociencia', credits: 3, status: 'planned', grade: '' },
-            { id: 'u3', code: 'BEPR-602B', name: 'Inteligencia Emocional', credits: 3, status: 'planned', grade: '' },
-          ],
-        },
-      ],
+      planVersion: PLAN_VERSION,
+      terms: buildPlanTerms(),
       assignments: [],
       studyLog: {},
+      grad: { tcuHours: 0, tcuTarget: 150, english: false },
     },
     muay: {
       rounds: 5,
@@ -69,22 +60,66 @@ function defaultData() {
   };
 }
 
+function normalizeState(parsed) {
+  const base = defaultData();
+  const p = parsed || {};
+
+  const meals = { logByDate: {}, ...(p.meals || {}) };
+  if (meals.planByDate) {
+    Object.entries(meals.planByDate).forEach(([date, day]) => {
+      const entry = meals.logByDate[date] || {};
+      ['breakfast', 'lunch', 'dinner', 'snacks'].forEach((slot) => {
+        const text = String((day && day[slot]) || '').trim();
+        if (text && !(entry[slot] && entry[slot].length)) entry[slot] = [{ id: uid(), text, time: '' }];
+      });
+      meals.logByDate[date] = entry;
+    });
+    delete meals.planByDate;
+  }
+
+  let recipes = p.recipes || [];
+  if (!p.recipesSeeded) {
+    const have = new Set(recipes.map((r) => r.id));
+    recipes = recipes.concat(base.recipes.filter((r) => !have.has(r.id)));
+  }
+
+  const pu = p.university || {};
+  const university = { ...base.university, ...pu };
+  university.grad = { ...base.university.grad, ...(pu.grad || {}) };
+  if (pu.planVersion !== PLAN_VERSION) {
+    const norm = (t) => String(t || '').trim().toLowerCase();
+    const old = new Map();
+    (pu.terms || []).forEach((t) => (t.courses || []).forEach((c) => old.set(norm(c.name), c)));
+    university.terms = base.university.terms.map((t) => ({
+      ...t,
+      courses: t.courses.map((c) => {
+        const o = old.get(norm(c.name));
+        return o ? { ...c, status: o.status || c.status, grade: o.grade || '' } : c;
+      }),
+    }));
+    const custom = (pu.terms || []).filter((t) => t.id !== 't1' && !/^p\d+$/.test(t.id));
+    university.terms.push(...custom);
+    university.planVersion = PLAN_VERSION;
+  }
+
+  return {
+    pomodoro: { ...base.pomodoro, ...p.pomodoro, settings: { ...base.pomodoro.settings, ...(p.pomodoro && p.pomodoro.settings) } },
+    workout: { ...base.workout, ...p.workout },
+    meals,
+    recipes,
+    recipesSeeded: true,
+    work: { ...base.work, ...p.work },
+    chores: { ...base.chores, ...p.chores },
+    university,
+    muay: { ...base.muay, ...p.muay },
+  };
+}
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultData();
-    const parsed = JSON.parse(raw);
-    const base = defaultData();
-    return {
-      pomodoro: { ...base.pomodoro, ...parsed.pomodoro, settings: { ...base.pomodoro.settings, ...(parsed.pomodoro && parsed.pomodoro.settings) } },
-      workout: { ...base.workout, ...parsed.workout },
-      meals: { ...base.meals, ...parsed.meals },
-      recipes: parsed.recipes || [],
-      work: { ...base.work, ...parsed.work },
-      chores: { ...base.chores, ...parsed.chores },
-      university: { ...base.university, ...parsed.university },
-      muay: { ...base.muay, ...parsed.muay },
-    };
+    return normalizeState(JSON.parse(raw));
   } catch (e) {
     console.warn('Failed to load stored data, starting fresh.', e);
     return defaultData();
@@ -99,7 +134,9 @@ let state = loadData();
 
 // ---------- Helpers ----------
 function todayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -388,24 +425,170 @@ document.getElementById('newExerciseInput').addEventListener('keydown', (e) => {
 });
 
 // ---------- Meals ----------
-function renderMeals() {
-  const key = todayKey();
-  const plan = state.meals.planByDate[key] || {};
-  document.getElementById('mealBreakfast').value = plan.breakfast || '';
-  document.getElementById('mealLunch').value = plan.lunch || '';
-  document.getElementById('mealDinner').value = plan.dinner || '';
-  document.getElementById('mealSnacks').value = plan.snacks || '';
+const MEAL_SLOTS = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner'], ['snacks', 'Snacks']];
+let mealDate = todayKey();
+
+function mealDay(date) { return state.meals.logByDate[date] || {}; }
+
+function guessMealSlot() {
+  const h = new Date().getHours();
+  if (h < 10) return 'breakfast';
+  if (h < 15) return 'lunch';
+  if (h < 18) return 'snacks';
+  return 'dinner';
 }
 
-['mealBreakfast', 'mealLunch', 'mealDinner', 'mealSnacks'].forEach((id) => {
-  document.getElementById(id).addEventListener('input', (e) => {
-    const key = todayKey();
-    if (!state.meals.planByDate[key]) state.meals.planByDate[key] = {};
-    const field = id.replace('meal', '').toLowerCase();
-    state.meals.planByDate[key][field] = e.target.value;
-    saveData();
+function logMeal(date, slot, text) {
+  const clean = String(text || '').trim();
+  if (!clean) return false;
+  if (!state.meals.logByDate[date]) state.meals.logByDate[date] = {};
+  const day = state.meals.logByDate[date];
+  if (!day[slot]) day[slot] = [];
+  const time = date === todayKey() ? new Date().toTimeString().slice(0, 5) : '';
+  day[slot].push({ id: uid(), text: clean, time });
+  saveData();
+  return true;
+}
+
+function renderMeals(focusSlot) {
+  const today = todayKey();
+  document.getElementById('mealDateLabel').textContent = mealDate === today ? `Today · ${formatDate(mealDate)}` : formatDate(mealDate);
+  document.getElementById('mealNext').disabled = mealDate >= today;
+
+  const wrap = document.getElementById('mealSlots');
+  wrap.innerHTML = '';
+  const day = mealDay(mealDate);
+  let total = 0;
+
+  MEAL_SLOTS.forEach(([slot, label]) => {
+    const entries = day[slot] || [];
+    total += entries.length;
+    const box = document.createElement('div');
+    box.className = 'meal-slot';
+    box.dataset.slot = slot;
+
+    const head = document.createElement('div');
+    head.className = 'meal-slot-head';
+    const name = document.createElement('span');
+    name.className = 'meal-slot-name';
+    name.textContent = label;
+    const count = document.createElement('span');
+    count.className = 'muted';
+    count.textContent = entries.length ? `${entries.length} logged` : '';
+    head.append(name, count);
+    box.appendChild(head);
+
+    const list = document.createElement('ul');
+    list.className = 'meal-entries';
+    entries.forEach((entry) => {
+      const li = document.createElement('li');
+      const time = document.createElement('span');
+      time.className = 'meal-time';
+      time.textContent = entry.time || '';
+      const text = document.createElement('span');
+      text.className = 'meal-text';
+      text.textContent = entry.text;
+      const rm = document.createElement('button');
+      rm.className = 'remove-btn';
+      rm.title = 'Remove';
+      rm.textContent = '✕';
+      rm.addEventListener('click', () => {
+        day[slot] = entries.filter((x) => x.id !== entry.id);
+        saveData();
+        renderMeals();
+      });
+      li.append(time, text, rm);
+      list.appendChild(li);
+    });
+    box.appendChild(list);
+
+    const row = document.createElement('div');
+    row.className = 'add-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = `What did you have for ${label.toLowerCase()}?`;
+    const add = document.createElement('button');
+    add.className = 'btn btn-small';
+    add.textContent = 'Add';
+    const submit = () => {
+      if (logMeal(mealDate, slot, input.value)) renderMeals(slot);
+    };
+    add.addEventListener('click', submit);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    row.append(input, add);
+
+    if (state.recipes.length) {
+      const pick = document.createElement('select');
+      pick.className = 'meal-recipe-pick';
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = 'From recipes…';
+      pick.appendChild(ph);
+      state.recipes.forEach((r) => {
+        const o = document.createElement('option');
+        o.value = r.id;
+        o.textContent = r.name;
+        pick.appendChild(o);
+      });
+      pick.addEventListener('change', () => {
+        const r = state.recipes.find((x) => x.id === pick.value);
+        if (r && logMeal(mealDate, slot, r.name)) renderMeals(slot);
+      });
+      row.appendChild(pick);
+    }
+    box.appendChild(row);
+    wrap.appendChild(box);
   });
+
+  document.getElementById('mealSummary').textContent = total
+    ? `${total} item${total === 1 ? '' : 's'} logged for this day.`
+    : 'Nothing logged yet. Type what you ate in any meal above and press Add.';
+
+  if (focusSlot) {
+    const el = wrap.querySelector(`[data-slot="${focusSlot}"] input`);
+    if (el) el.focus();
+  }
+  renderMealHistory();
+}
+
+function renderMealHistory() {
+  const box = document.getElementById('mealHistory');
+  box.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = todayKey(d);
+    const day = mealDay(key);
+    const items = MEAL_SLOTS.flatMap(([slot]) => (day[slot] || []).map((e) => e.text));
+    const row = document.createElement('button');
+    row.className = 'meal-hist-row' + (key === mealDate ? ' active' : '');
+    const when = document.createElement('span');
+    when.className = 'meal-hist-day';
+    when.textContent = i === 0 ? 'Today' : `${WEEKDAYS[d.getDay()]} ${d.getDate()}`;
+    const what = document.createElement('span');
+    what.className = 'meal-hist-text';
+    what.textContent = items.length ? items.join(', ') : '—';
+    const n = document.createElement('span');
+    n.className = 'meal-hist-count';
+    n.textContent = items.length ? items.length : '';
+    row.append(when, what, n);
+    row.addEventListener('click', () => { mealDate = key; renderMeals(); });
+    box.appendChild(row);
+  }
+}
+
+document.getElementById('mealPrev').addEventListener('click', () => {
+  const d = new Date(mealDate + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  mealDate = todayKey(d);
+  renderMeals();
 });
+document.getElementById('mealNext').addEventListener('click', () => {
+  const d = new Date(mealDate + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  if (todayKey(d) <= todayKey()) { mealDate = todayKey(d); renderMeals(); }
+});
+document.getElementById('mealToday').addEventListener('click', () => { mealDate = todayKey(); renderMeals(); });
 
 // ---------- Recipes ----------
 let editingRecipeId = null;
@@ -433,7 +616,9 @@ function renderRecipes() {
         <ul>${(recipe.ingredients || []).map((i) => `<li>${i}</li>`).join('')}</ul>
         <h4>Steps</h4>
         <ol>${(recipe.steps || []).map((s) => `<li>${s}</li>`).join('')}</ol>
+        ${recipe.note ? `<p class="muted recipe-source">${recipe.note}</p>` : ''}
         <div class="recipe-actions">
+          <button class="btn btn-small btn-primary" data-action="ate">I ate this</button>
           <button class="btn btn-small" data-action="edit">Edit</button>
           <button class="btn btn-small" data-action="delete">Delete</button>
         </div>
@@ -442,6 +627,14 @@ function renderRecipes() {
     const header = item.querySelector('.recipe-item-header');
     const body = item.querySelector('.recipe-body');
     header.addEventListener('click', () => body.classList.toggle('open'));
+    item.querySelector('[data-action="ate"]').addEventListener('click', () => {
+      const slot = guessMealSlot();
+      const label = MEAL_SLOTS.find(([k]) => k === slot)[1].toLowerCase();
+      logMeal(todayKey(), slot, recipe.name);
+      mealDate = todayKey();
+      document.getElementById('recipeNote').textContent = `Added “${recipe.name}” to today’s ${label}.`;
+      renderMeals();
+    });
     item.querySelector('[data-action="delete"]').addEventListener('click', () => {
       state.recipes = state.recipes.filter((r) => r.id !== recipe.id);
       saveData();
@@ -638,6 +831,20 @@ function currentTerm() {
   return uni().terms.find((t) => t.start && t.end && t.start <= today && today <= t.end);
 }
 
+function courseDone(c) { return c.status === 'done'; }
+
+function totalCourses() {
+  return uni().totalCourses > 0 ? uni().totalCourses : allCourses().length;
+}
+
+function averageGrade() {
+  const nums = allCourses()
+    .filter(courseDone)
+    .map((c) => parseFloat(String(c.grade).replace(',', '.')))
+    .filter((n) => !Number.isNaN(n));
+  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+}
+
 function renderUniHero() {
   const u = uni();
   document.getElementById('uniProgram').textContent = u.program;
@@ -659,18 +866,18 @@ function renderUniHero() {
     statusEl.textContent = 'Between terms';
   }
 
-  const courses = allCourses();
-  const done = courses.filter((c) => c.status === 'done');
-  const total = u.totalCourses > 0 ? u.totalCourses : courses.length;
-  const pct = total ? Math.round((done.length / total) * 100) : 0;
+  const done = allCourses().filter(courseDone).length;
+  const total = totalCourses();
+  const pct = total ? Math.round((done / total) * 100) : 0;
   const ring = document.getElementById('uniRingFill');
   const circumference = 2 * Math.PI * 52;
   ring.style.strokeDasharray = circumference;
   ring.style.strokeDashoffset = circumference * (1 - pct / 100);
   document.getElementById('uniRingPct').textContent = `${pct}%`;
 
-  document.getElementById('statCourses').textContent = `${done.length}/${total}`;
-  document.getElementById('statCredits').textContent = done.reduce((s, c) => s + (Number(c.credits) || 0), 0);
+  document.getElementById('statCourses').textContent = `${done}/${total}`;
+  const avg = averageGrade();
+  document.getElementById('statAvg').textContent = avg === null ? '—' : avg.toFixed(1).replace(/\.0$/, '');
 
   const wk = weekKey();
   let weekMinutes = 0;
@@ -686,7 +893,63 @@ function renderUniHero() {
   document.getElementById('statDue').textContent = u.assignments.filter((a) => !a.done && a.due >= today && a.due <= limit).length;
 }
 
+const uniOpen = new Set();
+let uniOpenInit = false;
+
+function initUniOpen() {
+  if (uniOpenInit) return;
+  uniOpenInit = true;
+  const first = currentTerm() || uni().terms.find((t) => t.courses.some((c) => !courseDone(c)));
+  if (first) uniOpen.add(first.id);
+}
+
+function renderRoadmap() {
+  const box = document.getElementById('uniRoadmap');
+  box.innerHTML = '';
+  const active = currentTerm();
+  let termsDone = 0;
+  uni().terms.forEach((t, i) => {
+    const done = t.courses.filter(courseDone).length;
+    const total = t.courses.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    if (total && done === total) termsDone += 1;
+    const b = document.createElement('button');
+    b.className = 'road-step' + (total && done === total ? ' complete' : '') + (active && active.id === t.id ? ' current' : '');
+    b.title = `${t.name}: ${done}/${total} courses`;
+    const first = t.name.split(' ')[0];
+    const num = document.createElement('span');
+    num.className = 'road-num';
+    num.textContent = /^[IVX]+$/.test(first) ? first : String(i + 1);
+    const bar = document.createElement('span');
+    bar.className = 'road-bar';
+    const fill = document.createElement('i');
+    fill.style.width = `${pct}%`;
+    bar.appendChild(fill);
+    const frac = document.createElement('span');
+    frac.className = 'road-frac';
+    frac.textContent = `${done}/${total}`;
+    b.append(num, bar, frac);
+    b.addEventListener('click', () => {
+      uniOpen.add(t.id);
+      renderTerms();
+      const el = document.getElementById(`term-${t.id}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    box.appendChild(b);
+  });
+  document.getElementById('roadmapNote').textContent = `${termsDone} of ${uni().terms.length} terms complete`;
+}
+
+function renderGrad() {
+  const g = uni().grad;
+  const pct = g.tcuTarget ? Math.min(100, Math.round((g.tcuHours / g.tcuTarget) * 100)) : 0;
+  document.getElementById('tcuText').textContent = `${g.tcuHours} / ${g.tcuTarget} h`;
+  document.getElementById('tcuFill').style.width = `${pct}%`;
+  document.getElementById('gradEnglish').checked = !!g.english;
+}
+
 function renderTerms() {
+  initUniOpen();
   const list = document.getElementById('termList');
   list.innerHTML = '';
   if (uni().terms.length === 0) {
@@ -695,18 +958,24 @@ function renderTerms() {
   }
   const active = currentTerm();
   uni().terms.forEach((term) => {
-    const done = term.courses.filter((c) => c.status === 'done').length;
+    const done = term.courses.filter(courseDone).length;
+    const total = term.courses.length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const open = uniOpen.has(term.id);
     const el = document.createElement('div');
-    el.className = 'term' + (active && active.id === term.id ? ' term-active' : '');
+    el.id = `term-${term.id}`;
+    el.className = 'term' + (active && active.id === term.id ? ' term-active' : '') + (total && done === total ? ' term-complete' : '');
     el.innerHTML = `
       <div class="term-header">
-        <div>
-          <div class="term-name">${term.name}${active && active.id === term.id ? ' <span class="pill">now</span>' : ''}</div>
-          <div class="muted term-dates">${term.start ? formatDate(term.start) : '—'} → ${term.end ? formatDate(term.end) : '—'} · ${done}/${term.courses.length} done</div>
+        <div class="term-title">
+          <div class="term-name">${term.name}${active && active.id === term.id ? ' <span class="pill">now</span>' : ''}${total && done === total ? ' <span class="pill pill-done">done</span>' : ''}</div>
+          <div class="muted term-dates">${term.start ? formatDate(term.start) + ' → ' + (term.end ? formatDate(term.end) : '—') + ' · ' : ''}${done}/${total} courses</div>
+          <div class="term-mini-bar"><i style="width:${pct}%"></i></div>
         </div>
         <div class="term-actions">
           <button class="icon-mini" data-act="edit" title="Edit term">✎</button>
           <button class="icon-mini" data-act="remove" title="Remove term">✕</button>
+          <button class="icon-mini" data-act="toggle" title="Show / hide">${open ? '▴' : '▾'}</button>
         </div>
       </div>
       <div class="term-edit hidden">
@@ -714,13 +983,22 @@ function renderTerms() {
         <input type="date" data-field="start" value="${term.start || ''}" />
         <input type="date" data-field="end" value="${term.end || ''}" />
       </div>
-      <div class="course-list"></div>
-      <div class="add-row course-add">
-        <input type="text" data-new="code" placeholder="Code" class="input-sm" />
-        <input type="text" data-new="name" placeholder="Course name" />
-        <button class="btn btn-small" data-act="addCourse">Add</button>
+      <div class="term-body ${open ? '' : 'hidden'}">
+        <div class="course-list"></div>
+        <div class="add-row course-add">
+          <input type="text" data-new="code" placeholder="Code" class="input-sm" />
+          <input type="text" data-new="name" placeholder="Add a course" />
+          <button class="btn btn-small" data-act="addCourse">Add</button>
+        </div>
       </div>
     `;
+
+    const toggle = () => {
+      if (uniOpen.has(term.id)) uniOpen.delete(term.id); else uniOpen.add(term.id);
+      renderTerms();
+    };
+    el.querySelector('[data-act="toggle"]').addEventListener('click', toggle);
+    el.querySelector('.term-title').addEventListener('click', toggle);
 
     const editBox = el.querySelector('.term-edit');
     el.querySelector('[data-act="edit"]').addEventListener('click', () => editBox.classList.toggle('hidden'));
@@ -742,31 +1020,41 @@ function renderTerms() {
     term.courses.forEach((course) => {
       const row = document.createElement('div');
       row.className = `course status-${course.status}`;
+      const choiceLabel = course.choice === 'electiva' ? 'Electiva Humanística' : 'Optativa 1';
+      const options = course.choice === 'electiva' ? ELECTIVA_OPTIONS : OPTATIVA_OPTIONS;
+      const nameHtml = course.choice
+        ? `<select class="course-choice">
+             <option value="">${choiceLabel}: choose…</option>
+             ${options.map((o) => `<option value="${o}" ${o === course.name ? 'selected' : ''}>${o}</option>`).join('')}
+           </select>`
+        : `<span class="course-name">${course.name}</span>`;
       row.innerHTML = `
         <div class="course-main">
-          <span class="course-code">${course.code || ''}</span>
-          <span class="course-name">${course.name}</span>
+          <span class="course-code">${course.code || (course.choice ? choiceLabel : '')}</span>
+          ${nameHtml}
         </div>
         <select class="course-status">
           ${COURSE_STATUSES.map((s) => `<option value="${s.value}" ${s.value === course.status ? 'selected' : ''}>${s.label}</option>`).join('')}
         </select>
-        <input type="number" class="course-credits" value="${course.credits}" min="0" title="Credits" />
         <input type="text" class="course-grade" value="${course.grade}" placeholder="Grade" />
         <button class="remove-btn" title="Remove">✕</button>
       `;
+      const choice = row.querySelector('.course-choice');
+      if (choice) {
+        choice.addEventListener('change', (e) => {
+          course.name = e.target.value || choiceLabel;
+          saveData();
+        });
+      }
       row.querySelector('.course-status').addEventListener('change', (e) => {
         course.status = e.target.value;
         saveData();
         renderUniversity();
       });
-      row.querySelector('.course-credits').addEventListener('change', (e) => {
-        course.credits = Number(e.target.value) || 0;
-        saveData();
-        renderUniHero();
-      });
       row.querySelector('.course-grade').addEventListener('change', (e) => {
         course.grade = e.target.value.trim();
         saveData();
+        renderUniHero();
       });
       row.querySelector('.remove-btn').addEventListener('click', () => {
         term.courses = term.courses.filter((c) => c.id !== course.id);
@@ -776,17 +1064,16 @@ function renderTerms() {
       courseList.appendChild(row);
     });
 
-    const addBtn = el.querySelector('[data-act="addCourse"]');
     const nameInput = el.querySelector('[data-new="name"]');
     const codeInput = el.querySelector('[data-new="code"]');
     const addCourse = () => {
       const name = nameInput.value.trim();
       if (!name) return;
-      term.courses.push({ id: uid(), code: codeInput.value.trim(), name, credits: 3, status: 'planned', grade: '' });
+      term.courses.push({ id: uid(), code: codeInput.value.trim(), name, choice: '', status: 'planned', grade: '' });
       saveData();
       renderUniversity();
     };
-    addBtn.addEventListener('click', addCourse);
+    el.querySelector('[data-act="addCourse"]').addEventListener('click', addCourse);
     nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCourse(); });
 
     list.appendChild(el);
@@ -859,6 +1146,8 @@ function renderStudyChart() {
 
 function renderUniversity() {
   renderUniHero();
+  renderRoadmap();
+  renderGrad();
   renderTerms();
   renderAssignments();
   renderStudyChart();
@@ -886,9 +1175,28 @@ document.getElementById('uniTotalInput').addEventListener('change', (e) => {
   renderUniHero();
 });
 
+document.getElementById('tcuAddBtn').addEventListener('click', () => {
+  const input = document.getElementById('tcuAddInput');
+  const hours = parseFloat(input.value);
+  if (Number.isNaN(hours) || hours <= 0) return;
+  uni().grad.tcuHours = Math.round((uni().grad.tcuHours + hours) * 10) / 10;
+  input.value = '';
+  saveData();
+  renderGrad();
+});
+document.getElementById('tcuAddInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('tcuAddBtn').click();
+});
+document.getElementById('gradEnglish').addEventListener('change', (e) => {
+  uni().grad.english = e.target.checked;
+  saveData();
+});
+
 document.getElementById('addTermBtn').addEventListener('click', () => {
   const n = uni().terms.length + 1;
-  uni().terms.push({ id: uid(), name: `Term ${n}`, start: '', end: '', courses: [] });
+  const t = { id: uid(), name: `Term ${n}`, start: '', end: '', courses: [] };
+  uni().terms.push(t);
+  uniOpen.add(t.id);
   saveData();
   renderUniversity();
 });
@@ -1161,7 +1469,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
   reader.onload = () => {
     try {
       const parsed = JSON.parse(reader.result);
-      state = { ...defaultData(), ...parsed };
+      state = normalizeState(parsed);
       saveData();
       renderAll();
     } catch (err) {
